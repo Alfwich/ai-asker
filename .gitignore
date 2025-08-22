@@ -1,6 +1,5 @@
-.provided-input
-.provided-instructions
 .api-key
+tmp
 input
 instruction
 output.txt
