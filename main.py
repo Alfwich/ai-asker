@@ -14,11 +14,12 @@ INPUT_DIR = "input"
 OUTPUT_FILE = "output.txt"
 
 # Models
+MODEL_GPT_5_1 = "gpt-5.1"
 MODEL_GPT_5 = "gpt-5"
 MODEL_GPT_5_MINI = "gpt-5-mini"
 MODEL_GPT_5_NANO = "gpt-5-nano"
 
-DEFAULT_MODEL = MODEL_GPT_5_NANO
+DEFAULT_MODEL = MODEL_GPT_5_1
 
 
 def format_transcript(transcript):
