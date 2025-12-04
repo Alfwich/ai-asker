@@ -9,11 +9,10 @@ API_KEY = open(".api-key", "r").read().strip()
 INPUT_DIR = "input"
 
 MODEL = "sora-2"
-SIZE = "1280x720"
+SIZES = ["1280x720", "720x1280"]
 
 
 def load_image_ref_from_input_dir(directory):
-    combined = ""
     try:
         files = os.listdir(directory)
     except FileNotFoundError:
@@ -30,29 +29,43 @@ def load_image_ref_from_input_dir(directory):
     return None
 
 
+def log(msg):
+    date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    message = f"[{date}] {msg}"
+    sys.stdout.write(f"{message}\n")
+
+
 def main():
 
     openai = OpenAI(api_key=API_KEY)
 
     videos = openai.videos.list()
     if not videos.data:
-        print("# No existing videos.")
+        log("No existing videos.")
     else:
-        print("# Existing videos:")
+        log("Existing videos:")
         for video in videos.data:
-            print(f"- {video}")
+            log(f"\t{video}")
 
-    print("\n")
+    log("\n")
 
     prompt = input("Please enter video prompt (end with Ctrl-D):\n").strip()
-    if not prompt.strip():
-        print("# No prompt.")
-        return
+    while not prompt:
+        log("### Prompt cannot be empty.")
+        prompt = input("Please enter video prompt (end with Ctrl-D):\n").strip()
 
     seconds = input("Please enter video duration in seconds [4, 8, 12] (end with Ctrl-D):\n").strip()
-    if not seconds.strip():
-        print("# No seconds.")
-        return
+    while seconds not in ("4", "8", "12"):
+        log("### Invalid duration. Please enter 4, 8, or 12.")
+        seconds = input("Please enter video duration in seconds [4, 8, 12] (end with Ctrl-D):\n").strip()
+
+    size_idx = input("Please enter video size index [0=1280x720, 1=720x1280] (end with Ctrl-D):\n").strip()
+    while size_idx not in ("0", "1"):
+        log("### Invalid size index. Please enter 0 or 1.")
+        size_idx = input("Please enter video size index [0, 1] (end with Ctrl-D):\n").strip()
+    size = SIZES[int(size_idx)]
+
+    image_reference_path = load_image_ref_from_input_dir(INPUT_DIR)
 
     video = None
 
@@ -61,27 +74,25 @@ def main():
         video = openai.videos.remix(
             video_id=remix_video_id,
             prompt=prompt)
-    else:
-        image_reference_path = load_image_ref_from_input_dir(INPUT_DIR)
-        if image_reference_path is not None:
-            with open(image_reference_path, "rb") as f:
-                video = openai.videos.create(
-                    model=MODEL,
-                    size=SIZE,
-                    seconds=seconds,
-                    prompt=prompt,
-                    input_reference=f)
-        else:
+    elif image_reference_path is not None and len(image_reference_path) > 0:
+        with open(image_reference_path, "rb") as f:
             video = openai.videos.create(
                 model=MODEL,
-                size=SIZE,
+                size=size,
                 seconds=seconds,
-                prompt=prompt)
+                prompt=prompt,
+                input_reference=f)
+    else:
+        video = openai.videos.create(
+            model=MODEL,
+            size=size,
+            seconds=seconds,
+            prompt=prompt)
 
-    print("Video generation started:", video)
+    log(f"Video generation started: {video}")
 
     progress = getattr(video, "progress", 0)
-    bar_length = 30
+    bar_length = 50
 
     while video.status in ("in_progress", "queued"):
         # Refresh status
@@ -92,27 +103,23 @@ def main():
         bar = "=" * filled_length + "-" * (bar_length - filled_length)
         status_text = "Queued" if video.status == "queued" else "Processing"
 
-        sys.stdout.write(f"{status_text}: [{bar}] {progress:.1f}%\n")
+        log(f"{status_text}: [{bar}] {progress:.1f}%")
         time.sleep(2)
-
-    # Move to next line after progress loop
-    sys.stdout.write("\n")
 
     if video.status == "failed":
         message = getattr(
             getattr(video, "error", None), "message", "Video generation failed"
         )
-        print(message)
+        log(message)
         return
 
-    print("Video generation completed:", video)
-    print("Downloading video content...")
-
-    print("Video generation started:", video)
+    log(f"Video generation completed: {video}")
+    log("Downloading video content...")
+    log(f"Video generation started: {video}")
     content = openai.videos.download_content(video.id, variant="video")
     content.write_to_file("video.mp4")
 
-    print("Wrote video.mp4")
+    log("Wrote video.mp4")
 
 
 if __name__ == "__main__":

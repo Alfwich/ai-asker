@@ -1,4 +1,5 @@
 .api-key
+.grok-key
 tmp
 input
 instruction
