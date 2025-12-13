@@ -1,6 +1,6 @@
-.api-key
-.grok-key
+.*-key
 tmp
 input
 instruction
 output.txt
+response*.txt

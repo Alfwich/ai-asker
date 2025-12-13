@@ -44,6 +44,9 @@ def send_request(client, model, instructions, input_text):
     response = client.responses.create(
         model=model,
         instructions=instructions,
+        reasoning={
+            "effort": "high"
+        },
         input=input_text,
     )
     end_time = time.time()
@@ -120,8 +123,13 @@ def main():
     client = OpenAI(api_key=API_KEY)
 
     # First request
+    response_num = 0
     response = send_request(client, args.model, instructions, input_text)
     first_output = response.output_text
+
+    with open(f"response_{response_num}.txt", "w", encoding="utf-8") as f:
+        f.write(first_output.strip() + "\n")
+        response_num += 1
 
     print(response.output_text)
 
@@ -155,6 +163,10 @@ def main():
             followup_input = format_transcript(transcript)
             followup_response = send_request(client, args.model, instructions, followup_input)
             followup_output = followup_response.output_text
+
+            with open(f"response_{response_num}.txt", "w", encoding="utf-8") as f:
+                f.write(followup_output.strip() + "\n")
+                response_num += 1
             transcript.append({"role": "assistant", "content": followup_output, "label": f"Interactive follow-up {count} response"})
 
             append_to_output(f"INTERACTIVE FOLLOW-UP {count}\n{user_followup}", followup_output)
